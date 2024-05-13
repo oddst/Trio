@@ -24,7 +24,7 @@ git clone --branch=<<branch>> --recurse-submodules https://github.com/nightscout
 cd Trio
 ```
 
-modify Config.xconfig to replace ##TEAM_ID## with your Apple Developer ID.
+Modify the `ConfigOverride.xcconfig` file to replace `YourTeamIdGoesHere` with your Apple Developer ID, and remove the `#` that precedes `DEVELOPER_TEAM`.
 
 ```
 xed .
