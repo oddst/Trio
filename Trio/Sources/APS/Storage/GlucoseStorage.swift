@@ -582,6 +582,14 @@ final class BaseGlucoseStorage: GlucoseStorage, Injectable {
                     return
                 }
 
+                // Create a new DeletedGlucoseStored object and copy the properties
+                if let date = glucoseToDelete.date {
+                    let deletedEntry = DeletedGlucoseStored(context: taskContext)
+                    deletedEntry.date = date
+                    deletedEntry.glucose = glucoseToDelete.glucose
+                    deletedEntry.isManualGlucoseEntry = glucoseToDelete.isManual
+                }
+
                 taskContext.delete(glucoseToDelete)
 
                 guard taskContext.hasChanges else { return }
