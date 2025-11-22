@@ -608,6 +608,8 @@
 		DD82D4B82DCAB2BA00BAFC77 /* PropertyPersistentFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD82D4B72DCAB2BA00BAFC77 /* PropertyPersistentFlags.swift */; };
 		DD868FD82E381A54005D3308 /* APNSJWTClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD868FD72E381A54005D3308 /* APNSJWTClaims.swift */; };
 		DD88C8E22C50420800F2D558 /* DefinitionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD88C8E12C50420800F2D558 /* DefinitionRow.swift */; };
+		DD906BF42EA6AA0100262772 /* NightscoutUploadPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD906BF32EA6AA0100262772 /* NightscoutUploadPipeline.swift */; };
+		DD906BF62EA6AAE900262772 /* BaseNightscoutManager+Subscribers.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD906BF52EA6AAE900262772 /* BaseNightscoutManager+Subscribers.swift */; };
 		DD940BAA2CA7585D000830A5 /* GlucoseColorScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD940BA92CA7585D000830A5 /* GlucoseColorScheme.swift */; };
 		DD940BAC2CA75889000830A5 /* DynamicGlucoseColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD940BAB2CA75889000830A5 /* DynamicGlucoseColor.swift */; };
 		DD98ACC02D71013200C0778F /* StatChartUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD98ACBF2D71013200C0778F /* StatChartUtils.swift */; };
@@ -1436,6 +1438,8 @@
 		DD82D4B72DCAB2BA00BAFC77 /* PropertyPersistentFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyPersistentFlags.swift; sourceTree = "<group>"; };
 		DD868FD72E381A54005D3308 /* APNSJWTClaims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APNSJWTClaims.swift; sourceTree = "<group>"; };
 		DD88C8E12C50420800F2D558 /* DefinitionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefinitionRow.swift; sourceTree = "<group>"; };
+		DD906BF32EA6AA0100262772 /* NightscoutUploadPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutUploadPipeline.swift; sourceTree = "<group>"; };
+		DD906BF52EA6AAE900262772 /* BaseNightscoutManager+Subscribers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BaseNightscoutManager+Subscribers.swift"; sourceTree = "<group>"; };
 		DD940BA92CA7585D000830A5 /* GlucoseColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlucoseColorScheme.swift; sourceTree = "<group>"; };
 		DD940BAB2CA75889000830A5 /* DynamicGlucoseColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicGlucoseColor.swift; sourceTree = "<group>"; };
 		DD98ACBF2D71013200C0778F /* StatChartUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatChartUtils.swift; sourceTree = "<group>"; };
@@ -3474,8 +3478,10 @@
 		DDC9B9962CFD2332003E7721 /* Nightscout */ = {
 			isa = PBXGroup;
 			children = (
+				DD906BF32EA6AA0100262772 /* NightscoutUploadPipeline.swift */,
 				3811DE9725C9D88300A708ED /* NightscoutManager.swift */,
 				38FE826C25CC8461001FF17A /* NightscoutAPI.swift */,
+				DD906BF52EA6AAE900262772 /* BaseNightscoutManager+Subscribers.swift */,
 			);
 			path = Nightscout;
 			sourceTree = "<group>";
@@ -4135,6 +4141,7 @@
 				F90692CF274B999A0037068D /* HealthKitDataFlow.swift in Sources */,
 				CE7CA3552A064973004BE681 /* ListStateIntent.swift in Sources */,
 				C28DD7262DBA9A9E00EC02DD /* GlucosePercentileDetailView.swift in Sources */,
+				DD906BF42EA6AA0100262772 /* NightscoutUploadPipeline.swift in Sources */, 
 				BDF530D82B40F8AC002CAF43 /* LockScreenView.swift in Sources */,
 				195D80B72AF697B800D25097 /* DynamicSettingsDataFlow.swift in Sources */,
 				DD98ACC02D71013200C0778F /* StatChartUtils.swift in Sources */,
@@ -4444,6 +4451,7 @@
 				BD7DA9AC2AE06EB900601B20 /* BolusCalculatorConfigRootView.swift in Sources */,
 				AD3D2CD42CD01B9EB8F26522 /* PumpConfigDataFlow.swift in Sources */,
 				DD17452E2C55AE4800211FAC /* TargetBehavoirDataFlow.swift in Sources */,
+				DD906BF62EA6AAE900262772 /* BaseNightscoutManager+Subscribers.swift in Sources */,
 				53F2382465BF74DB1A967C8B /* PumpConfigProvider.swift in Sources */,
 				5D16287A969E64D18CE40E44 /* PumpConfigStateModel.swift in Sources */,
 				DDF6902C2DA028D3008BF16C /* DiagnosticsStepView.swift in Sources */,
