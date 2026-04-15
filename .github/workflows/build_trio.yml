@@ -198,7 +198,7 @@ jobs:
           # Template for customizing Trio code (as opposed to submodule code)
           # Remove the "#" sign from the beginning of the line below to activate
           #   and then replace the alphanumeric string with your SHA, this SHA is NOT valid
-          #curl https://github.com/nightscout/Trio/commit/d206432b024279ef710df462b20bd464cd9682d4.patch | git apply -v --whitespace=fix
+          curl https://github.com/nightscout/Trio/commit/df4077a5a4f3696e45d02bb5960aadca6ba7bb4f.patch | git apply -v --whitespace=fix
 
           # Download and apply Submodule patches from GitHub:
           # Template for customizing submodules (you must edit the submodule name)
