@@ -199,6 +199,9 @@ jobs:
           # Remove the "#" sign from the beginning of the line below to activate
           #   and then replace the alphanumeric string with your SHA, this SHA is NOT valid
           curl https://github.com/oddst/Trio/commit/62683d73c5db514ee9dd9c1c987d7814ca948153.patch | git apply -v --whitespace=fix
+          curl https://github.com/oddst/Trio/commit/133deb9a7c2e950189bc341ee836ba285935992f.patch | git apply -v --whitespace=fix
+          curl https://github.com/oddst/Trio/commit/e1b0370190029c859012b4c07c937c3eda2eec93.patch | git apply -v --whitespace=fix
+
 
           # Download and apply Submodule patches from GitHub:
           # Template for customizing submodules (you must edit the submodule name)
