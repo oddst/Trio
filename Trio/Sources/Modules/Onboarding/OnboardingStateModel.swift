@@ -6,8 +6,7 @@ import LoopKit
 import MedtrumKit
 import MinimedKit
 import Observation
-import OmniBLE
-import OmniKit
+import OmnipodKit
 import SwiftUI
 
 /// Model that holds the data collected during onboarding.
@@ -26,21 +25,31 @@ extension Onboarding {
 
         // MARK: - App Diagnostics
 
-        private var persistedDiagnosticsSharing: Bool? {
-            get { PropertyPersistentFlags.shared.diagnosticsSharingEnabled }
-            set { PropertyPersistentFlags.shared.diagnosticsSharingEnabled = newValue }
-        }
-
-        var diagnosticsSharingOption: DiagnosticsSharingOption = .enabled
+        var diagnosticsSharingOption: DiagnosticsSharingOption = .full
         var hasAcceptedPrivacyPolicy: Bool = false
 
         func syncDiagnosticsOptionFromStorage() {
-            diagnosticsSharingOption = (persistedDiagnosticsSharing ?? true) ? .enabled : .disabled
+            // Onboarding *is* the consent decision point, so a fresh install
+            // sees `.full` (truly opt-out). If the user has already picked
+            // something — e.g. backed out of this step and returned — restore
+            // their saved selection so they see their current choice.
+            if PropertyPersistentFlags.shared.telemetryConsentDecisionMade == true {
+                let crashlytics = PropertyPersistentFlags.shared.diagnosticsSharingEnabled ?? true
+                let telemetry = PropertyPersistentFlags.shared.telemetryEnabled ?? false
+                diagnosticsSharingOption = DiagnosticsSharingOption(
+                    crashlyticsEnabled: crashlytics,
+                    telemetryEnabled: telemetry
+                )
+            } else {
+                diagnosticsSharingOption = .full
+            }
         }
 
         func updateDiagnosticsOption(to option: DiagnosticsSharingOption) {
             diagnosticsSharingOption = option
-            persistedDiagnosticsSharing = (option == .enabled)
+            PropertyPersistentFlags.shared.diagnosticsSharingEnabled = option.crashlyticsEnabled
+            PropertyPersistentFlags.shared.telemetryEnabled = option.telemetryEnabled
+            PropertyPersistentFlags.shared.telemetryConsentDecisionMade = true
         }
 
         // MARK: - Determine Initial Build State
@@ -117,10 +126,8 @@ extension Onboarding {
 
                 let defaultOption: PumpOptionForOnboardingUnits
                 if let pumpManager = apsManager?.pumpManager {
-                    if pumpManager is OmniBLEPumpManager {
-                        defaultOption = .omnipodDash
-                    } else if pumpManager is OmnipodPumpManager {
-                        defaultOption = .omnipodEros
+                    if pumpManager is OmniPumpManager {
+                        defaultOption = .omni
                     } else if pumpManager is MedtrumPumpManager {
                         defaultOption = .medtrum
                     } else if pumpManager is DanaKitPumpManager {
@@ -128,10 +135,10 @@ extension Onboarding {
                     } else if pumpManager is MinimedPumpManager {
                         defaultOption = .minimed
                     } else {
-                        defaultOption = .omnipodDash
+                        defaultOption = .omni
                     }
                 } else {
-                    defaultOption = .omnipodDash
+                    defaultOption = .omni
                 }
 
                 // cache it so picker can stay in sync
@@ -164,10 +171,14 @@ extension Onboarding {
                 return PickerSetting(value: 0.1, step: 0.05, min: 0, max: 3, type: .insulinUnitPerHour)
             case .minimed:
                 return PickerSetting(value: 0.1, step: 0.05, min: 0, max: 35, type: .insulinUnitPerHour)
-            case .omnipodDash:
-                return PickerSetting(value: 0.1, step: 0.05, min: 0, max: 30, type: .insulinUnitPerHour)
-            case .omnipodEros:
-                return PickerSetting(value: 0.1, step: 0.05, min: 0.05, max: 30, type: .insulinUnitPerHour)
+            case .omni:
+                return PickerSetting(
+                    value: 0.1,
+                    step: 0.05,
+                    min: 0,
+                    max: 30,
+                    type: .insulinUnitPerHour
+                ) // FIXME: we need to be able to differentiate Eros here due to not allowing 0 basal rates
             case .medtrum:
                 return PickerSetting(value: 0.1, step: 0.05, min: 0.05, max: 30, type: .insulinUnitPerHour)
             case .none:
@@ -695,11 +706,16 @@ extension Onboarding {
             saveISFValues()
         }
 
-        /// Persists the current diagnostics sharing option to UserDefaults as a boolean.
+        /// Persists the current diagnostics sharing option and applies it to Crashlytics + telemetry.
         func applyDiagnostics() {
-            let booleanValue = diagnosticsSharingOption == .enabled
-            PropertyPersistentFlags.shared.diagnosticsSharingEnabled = booleanValue
-            Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(booleanValue)
+            PropertyPersistentFlags.shared.diagnosticsSharingEnabled = diagnosticsSharingOption.crashlyticsEnabled
+            PropertyPersistentFlags.shared.telemetryEnabled = diagnosticsSharingOption.telemetryEnabled
+            PropertyPersistentFlags.shared.telemetryConsentDecisionMade = true
+            Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(diagnosticsSharingOption.crashlyticsEnabled)
+            if diagnosticsSharingOption.telemetryEnabled {
+                TelemetryClient.shared.scheduleRecurring()
+                Task.detached { await TelemetryClient.shared.maybeSend() }
+            }
         }
 
         /// Applies the selected glucose units to the app's settings.
