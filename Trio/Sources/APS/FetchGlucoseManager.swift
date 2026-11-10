@@ -13,12 +13,22 @@ protocol FetchGlucoseManager: SourceInfoProvider {
     func deleteGlucoseSource() async
     func removeCalibrations()
     func newGlucoseFromCgmManager(newGlucose: [BloodGlucose])
+    /// Notes to Nightscout a sensor state without reliable glucose, once per
+    /// state; see `CGMSensorStateLog`. Call on every reading.
+    func reportCGMSensorObservation(_ observation: CGMSensorObservation)
+    func startCGMSensorSession(startedAt: Date)
     var glucoseSource: GlucoseSource? { get }
     var cgmManager: CGMManagerUI? { get }
     var cgmGlucoseSourceType: CGMType { get set }
     var cgmGlucosePluginId: String { get }
     var settingsManager: SettingsManager! { get }
     var shouldSyncToRemoteService: Bool { get }
+    var cgmDisplayState: CurrentValueSubject<CgmDisplayState?, Never> { get }
+    var cgmProgressHighlight: CurrentValueSubject<DeviceLifecycleProgress?, Never> { get }
+    /// Routes CGMManager-issued alerts (sensor failure, signal loss, expiry,
+    /// etc.) into the unified `TrioAlertManager` pipeline. Read by
+    /// `PluginSource.issueAlert` / `retractAlert`.
+    var trioAlertManager: TrioAlertManager! { get }
 }
 
 extension FetchGlucoseManager {
@@ -33,13 +43,16 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
     @Injected() var broadcaster: Broadcaster!
     @Injected() var glucoseStorage: GlucoseStorage!
     @Injected() var nightscoutManager: NightscoutManager!
-    @Injected() var tidepoolService: TidepoolManager!
-    @Injected() var apsManager: APSManager!
     @Injected() var settingsManager: SettingsManager!
     @Injected() var healthKitManager: HealthKitManager!
     @Injected() var deviceDataManager: DeviceDataManager!
     @Injected() var pluginCGMManager: PluginManager!
     @Injected() var calibrationService: CalibrationService!
+    @Injected() var trioAlertManager: TrioAlertManager!
+
+    /// Guarded by `sensorStateLock`.
+    @Persisted(key: "cgmSensorStateLog") private var sensorStateLog = CGMSensorStateLog()
+    private let sensorStateLock = NSRecursiveLock()
 
     private var lifetime = Lifetime()
     private let timer = DispatchTimer(timeInterval: 1.minutes.timeInterval)
@@ -55,8 +68,6 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
     @PersistedProperty(key: "CGMManagerState") var rawCGMManager: CGMManager.RawValue?
 
     private lazy var simulatorSource = GlucoseSimulatorSource()
-
-    private let context = CoreDataStack.shared.newTaskContext()
 
     /// Enforce mutual exclusion on calls to glucoseStoreAndHeartDecision
     private let glucoseStoreAndHeartLock = DispatchSemaphore(value: 1)
@@ -148,10 +159,51 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
         }
     }
 
-    var glucoseSource: GlucoseSource?
+    let cgmDisplayState = CurrentValueSubject<CgmDisplayState?, Never>(nil)
+    let cgmProgressHighlight = CurrentValueSubject<DeviceLifecycleProgress?, Never>(nil)
+    private var cgmStatusSubscriptions = Set<AnyCancellable>()
+
+    var glucoseSource: GlucoseSource? {
+        didSet {
+            // Drop prior subscriptions so source swaps don't dupe emissions.
+            cgmStatusSubscriptions.removeAll()
+            cgmDisplayState.value = glucoseSource?.cgmDisplayState.value
+            cgmProgressHighlight.value = glucoseSource?.cgmProgressHighlight.value
+            guard let glucoseSource else { return }
+            glucoseSource.cgmDisplayState
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] state in self?.cgmDisplayState.value = state }
+                .store(in: &cgmStatusSubscriptions)
+            glucoseSource.cgmProgressHighlight
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] progress in self?.cgmProgressHighlight.value = progress }
+                .store(in: &cgmStatusSubscriptions)
+        }
+    }
 
     func removeCalibrations() {
         calibrationService.removeAllCalibrations()
+    }
+
+    func reportCGMSensorObservation(_ observation: CGMSensorObservation) {
+        let settings = settingsManager.settings
+        guard settings.isUploadEnabled, settings.uploadCGMSensorStates else { return }
+        let pending = sensorStateLock.perform { sensorStateLog.observe(observation) }
+        guard let pending else { return }
+
+        Task {
+            let note = "CGM: " + pending
+            if await nightscoutManager.uploadNoteTreatment(note: note) {
+                debug(.deviceManager, "CGM sensor state uploaded to Nightscout: \(note)")
+            } else {
+                self.sensorStateLock.perform { self.sensorStateLog.uploadFailed(pending) }
+                debug(.deviceManager, "CGM sensor state upload failed, will retry: \(note)")
+            }
+        }
+    }
+
+    func startCGMSensorSession(startedAt: Date) {
+        sensorStateLock.perform { sensorStateLog.startSensor(startedAt: startedAt) }
     }
 
     @MainActor func deleteGlucoseSource() async {
@@ -222,12 +274,14 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
                 glucoseSource = nightscoutManager
             case .simulator:
                 glucoseSource = simulatorSource
-            case .enlite:
-                glucoseSource = deviceDataManager
             case .plugin:
                 glucoseSource = PluginSource(glucoseStorage: glucoseStorage, glucoseManager: self)
             }
         }
+
+        // Only an active plugin CGM with its own BLE connection can wake the app; otherwise the pump must heartbeat
+        let cgmProvidesHeartbeat = cgmGlucoseSourceType == .plugin && (cgmManager?.providesBLEHeartbeat ?? false)
+        deviceDataManager.updateCGMHeartbeatCapability(providesBLEHeartbeat: cgmProvidesHeartbeat)
     }
 
     /// Upload cgmManager from raw value
@@ -242,7 +296,7 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
 
     private func glucoseStoreAndHeartDecision(syncDate: Date, glucose: [BloodGlucose]) async throws {
         // calibration add if required only for sensor
-        let newGlucose = overcalibrate(entries: glucose)
+        let newGlucose = overcalibrate(entries: glucose.filter { $0.sgv != nil })
 
         var filteredByDate: [BloodGlucose] = []
         var filtered: [BloodGlucose] = []
@@ -250,6 +304,13 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
         // Start background task
         var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
         backgroundTaskID = startBackgroundTask(withName: "Glucose Store and Heartbeat Decision")
+
+        // Check if sensor emitted calibrations
+        let calibrations = glucose.filter { $0.mbg != nil }
+        if calibrations.isNotEmpty {
+            debug(.deviceManager, "New calibration found")
+            try await glucoseStorage.storeGlucose(calibrations)
+        }
 
         guard newGlucose.isNotEmpty else {
             endBackgroundTaskSafely(&backgroundTaskID, taskName: "Glucose Store and Heartbeat Decision")
@@ -278,10 +339,20 @@ final class BaseFetchGlucoseManager: FetchGlucoseManager, Injectable {
         try await glucoseStorage.storeGlucose(filtered)
 
         if settingsManager.settings.smoothGlucose {
-            await exponentialSmoothingGlucose(context: context)
+            let smoothingContext = CoreDataStack.shared.newTaskContext()
+            smoothingContext.name = "exponentialSmoothingGlucose"
+            await exponentialSmoothingGlucose(context: smoothingContext)
         }
 
+        // Push the fresh reading schedule so the pump can align its BLE heartbeat
+        deviceDataManager.updatePumpBLEHeartbeat(
+            lastCGMReadingDate: filtered.map(\.dateString).max(),
+            expectedCGMReadingInterval: cgmManager?.expectedGlucoseSampleInterval
+        )
+
         deviceDataManager.heartbeat(date: Date())
+
+        TelemetryClient.shared.checkAndSendIfOverdueInBackground()
 
         endBackgroundTaskSafely(&backgroundTaskID, taskName: "Glucose Store and Heartbeat Decision")
     }
@@ -355,7 +426,9 @@ extension BaseFetchGlucoseManager: SettingsObserver {
 
             self.glucoseStoreAndHeartLock.wait()
             Task {
-                await self.exponentialSmoothingGlucose(context: self.context)
+                let context = CoreDataStack.shared.newTaskContext()
+                context.name = "exponentialSmoothingGlucose"
+                await self.exponentialSmoothingGlucose(context: context)
                 self.glucoseStoreAndHeartLock.signal()
             }
         }
