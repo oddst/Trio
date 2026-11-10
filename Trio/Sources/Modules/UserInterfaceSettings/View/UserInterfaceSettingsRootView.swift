@@ -61,6 +61,8 @@ extension UserInterfaceSettings {
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                                 .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                                 Spacer()
                                 Button(
                                     action: {
@@ -89,7 +91,7 @@ extension UserInterfaceSettings {
                                     },
                                     label: {
                                         HStack {
-                                            Image(systemName: "questionmark.circle")
+                                            Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                         }
                                     }
                                 ).buttonStyle(BorderlessButtonStyle())
@@ -116,6 +118,8 @@ extension UserInterfaceSettings {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                             Spacer()
                             Button(
                                 action: {
@@ -127,20 +131,27 @@ extension UserInterfaceSettings {
                                                     "Set the color scheme for glucose readings on the main glucose graph, live activities, and bolus calculator. Descriptions for each option found below."
                                                 )
                                                 VStack(alignment: .leading, spacing: 5) {
-                                                    Text("Static:").bold()
-                                                    Text("Red = Below Range")
-                                                    Text("Green = In Range")
-                                                    Text("Yellow = Above Range")
-                                                }
-                                                VStack(alignment: .leading, spacing: 5) {
-                                                    Text("Dynamic:").bold()
+                                                    Text("Dynamic (Default):").bold()
                                                     Text("Green = At Target")
                                                     Text(
                                                         "Gradient Red = As readings approach and exceed below target, they gradually become more red."
                                                     )
+                                                    .fixedSize(horizontal: false, vertical: true)
                                                     Text(
                                                         "Gradient Purple = As readings approach and exceed above target, they become more purple."
                                                     )
+                                                    .fixedSize(horizontal: false, vertical: true)
+                                                    GlucoseColorGradientPreview(
+                                                        units: state.units,
+                                                        target: state.currentGlucoseTarget
+                                                    )
+                                                    .padding(.top, 6)
+                                                }
+                                                VStack(alignment: .leading, spacing: 5) {
+                                                    Text("Static:").bold()
+                                                    Text("Red = Below Range")
+                                                    Text("Green = In Range")
+                                                    Text("Purple = Above Range")
                                                 }
                                             }
                                         )
@@ -148,7 +159,7 @@ extension UserInterfaceSettings {
                                 },
                                 label: {
                                     HStack {
-                                        Image(systemName: "questionmark.circle")
+                                        Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                     }
                                 }
                             ).buttonStyle(BorderlessButtonStyle())
@@ -161,7 +172,7 @@ extension UserInterfaceSettings {
                     content: {
                         VStack {
                             Toggle("Show X-Axis Grid Lines", isOn: $state.xGridLines)
-                            Toggle("Show Y-Axis Grid Lines", isOn: $state.yGridLines)
+                            Toggle("Show Y-Axis Grid Lines", isOn: $state.yGridLines).padding(.top)
 
                             HStack(alignment: .center) {
                                 Text(
@@ -170,6 +181,8 @@ extension UserInterfaceSettings {
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                                 .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                                 Spacer()
                                 Button(
                                     action: {
@@ -182,7 +195,7 @@ extension UserInterfaceSettings {
                                     },
                                     label: {
                                         HStack {
-                                            Image(systemName: "questionmark.circle")
+                                            Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                         }
                                     }
                                 ).buttonStyle(BorderlessButtonStyle())
@@ -228,9 +241,26 @@ extension UserInterfaceSettings {
                                         Text(state.units == .mgdL ? " mg/dL" : " mmol/L").foregroundColor(.secondary)
                                     }
                                 }
+                                .contentShape(Rectangle())
                                 .onTapGesture {
                                     displayPickerLowThreshold.toggle()
                                 }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(Text("Low Threshold"))
+                                .accessibilityValue(Text(
+                                    (state.units == .mgdL ? state.low.description : state.low.asMmolL.description)
+                                        + " " + state.units.spokenValue
+                                ))
+                                .accessibilityHint(Text(
+                                    displayPickerLowThreshold
+                                        ? String(localized: "Closes the value picker", comment: "Accessibility hint")
+                                        : String(
+                                            localized: "Opens a picker to change this value",
+                                            comment: "Accessibility hint"
+                                        )
+                                ))
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { displayPickerLowThreshold.toggle() }
                             }
                             .padding(.top)
 
@@ -263,9 +293,26 @@ extension UserInterfaceSettings {
                                         Text(state.units == .mgdL ? " mg/dL" : " mmol/L").foregroundColor(.secondary)
                                     }
                                 }
+                                .contentShape(Rectangle())
                                 .onTapGesture {
                                     displayPickerHighThreshold.toggle()
                                 }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(Text("High Threshold"))
+                                .accessibilityValue(Text(
+                                    (state.units == .mgdL ? state.high.description : state.high.asMmolL.description)
+                                        + " " + state.units.spokenValue
+                                ))
+                                .accessibilityHint(Text(
+                                    displayPickerHighThreshold
+                                        ? String(localized: "Closes the value picker", comment: "Accessibility hint")
+                                        : String(
+                                            localized: "Opens a picker to change this value",
+                                            comment: "Accessibility hint"
+                                        )
+                                ))
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { displayPickerHighThreshold.toggle() }
                             }
                             .padding(.top)
 
@@ -286,9 +333,11 @@ extension UserInterfaceSettings {
 
                             HStack(alignment: .center) {
                                 Text(
-                                    "Set low and high glucose values for the main screen, watch app and live activity glucose graph."
+                                    "Set low and high glucose values for the main screen, watch app, live activity, and contact image colors."
                                 )
                                 .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
 
@@ -303,7 +352,10 @@ extension UserInterfaceSettings {
                                                         "Default values are based on internationally accepted Time in Range values of \(state.units == .mgdL ? "70" : 70.formattedAsMmolL)-\(state.units == .mgdL ? "180" : 180.formattedAsMmolL) \(state.units.rawValue)."
                                                     ).bold()
                                                     Text(
-                                                        "Adjust these values if you would like the statistics to reflect different values than the internationally accepted Time In Range values used as the default."
+                                                        "These thresholds drive the chart band colors, statistics in-range buckets, Live Activity colors, and Contact Image colors."
+                                                    )
+                                                    Text(
+                                                        "To configure when alarms fire (urgent low / low / high / forecasted low), open Glucose Alarms."
                                                     )
                                                     Text("Note: These values are not used to calculate insulin dosing.")
                                                 }
@@ -313,7 +365,7 @@ extension UserInterfaceSettings {
                                     },
                                     label: {
                                         HStack {
-                                            Image(systemName: "questionmark.circle")
+                                            Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                         }
                                     }
                                 ).buttonStyle(BorderlessButtonStyle())
@@ -340,6 +392,8 @@ extension UserInterfaceSettings {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                             Spacer()
                             Button(
                                 action: {
@@ -368,7 +422,7 @@ extension UserInterfaceSettings {
                                 },
                                 label: {
                                     HStack {
-                                        Image(systemName: "questionmark.circle")
+                                        Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                     }
                                 }
                             ).buttonStyle(BorderlessButtonStyle())
@@ -394,6 +448,8 @@ extension UserInterfaceSettings {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                             Spacer()
                             Button(
                                 action: {
@@ -410,7 +466,7 @@ extension UserInterfaceSettings {
                                 },
                                 label: {
                                     HStack {
-                                        Image(systemName: "questionmark.circle")
+                                        Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                     }
                                 }
                             ).buttonStyle(BorderlessButtonStyle())
@@ -438,6 +494,8 @@ extension UserInterfaceSettings {
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                                 .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                                 Spacer()
                                 Button(
                                     action: {
@@ -452,7 +510,7 @@ extension UserInterfaceSettings {
                                     },
                                     label: {
                                         HStack {
-                                            Image(systemName: "questionmark.circle")
+                                            Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                         }
                                     }
                                 ).buttonStyle(BorderlessButtonStyle())
@@ -479,6 +537,8 @@ extension UserInterfaceSettings {
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                             Spacer()
                             Button(
                                 action: {
@@ -532,13 +592,55 @@ extension UserInterfaceSettings {
                                 },
                                 label: {
                                     HStack {
-                                        Image(systemName: "questionmark.circle")
+                                        Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
                                     }
                                 }
                             ).buttonStyle(BorderlessButtonStyle())
                         }.padding(.top)
                     }.padding(.bottom)
                 }.settingsSearchTarget(label: String(localized: "Time in Range Type"))
+
+                Section {
+                    VStack(alignment: .leading) {
+                        Picker(
+                            selection: $state.homeStatsPanelFace,
+                            label: Text("Home Statistics Panel").multilineTextAlignment(.leading)
+                        ) {
+                            ForEach(HomeStatsPanelFace.allCases) { selection in
+                                Text(selection.displayName).tag(selection)
+                            }
+                        }.padding(.top)
+
+                        HStack(alignment: .center) {
+                            Text(
+                                "Choose what the statistics panel on the home screen displays."
+                            )
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                            Button(
+                                action: {
+                                    hintLabel = String(localized: "Home Statistics Panel")
+                                    selectedVerboseHint =
+                                        AnyView(
+                                            Text(
+                                                "Choose what the statistics panel on the home screen shows by default. Tapping the panel always opens the full statistics view.\n\nTime in Range: today's time in range percentage with a glucose distribution bar.\n\nDistribution Bar Only: just the glucose distribution bar, without the percentage.\n\nToday's Averages: today's average glucose and GMI (Glucose Management Index).\n\nHide Statistics: shows no data at all, just a \"View Statistics\" shortcut."
+                                            )
+                                        )
+                                    shouldDisplayHint.toggle()
+                                },
+                                label: {
+                                    HStack {
+                                        Image(systemName: "questionmark.circle").accessibilityLabel(Text("More information"))
+                                    }
+                                }
+                            ).buttonStyle(BorderlessButtonStyle())
+                        }.padding(.top)
+                    }.padding(.bottom)
+                }.settingsSearchTarget(label: String(localized: "Home Statistics Panel"))
 
                 SettingInputSection(
                     decimalValue: $state.carbsRequiredThreshold,
@@ -602,5 +704,90 @@ extension UserInterfaceSettings {
             .navigationBarTitleDisplayMode(.automatic)
             .settingsHighlightScroll()
         }
+    }
+}
+
+/// Illustrative bar that samples `getDynamicGlucoseColor` across the glucose range,
+/// so the hint shows exactly how the dynamic scheme colors readings from low to high.
+private struct GlucoseColorGradientPreview: View {
+    let units: GlucoseUnits
+    // User's current glucose target — the green peak of the dynamic sweep.
+    let target: Decimal
+
+    private let minGlucose: Decimal = 40
+    private let maxGlucose: Decimal = 250
+
+    // Fixed anchors the dynamic scheme uses on the glucose graph: solid red at/below,
+    // solid purple at/above, sweeping red → green → purple between them.
+    private let hardCodedLow: Decimal = 55
+    private let hardCodedHigh: Decimal = 220
+
+    private var markerValues: [Decimal] {
+        [hardCodedLow, target, hardCodedHigh]
+    }
+
+    private var gradientStops: [Gradient.Stop] {
+        let steps = 60
+        return (0 ... steps).map { step in
+            let location = Double(step) / Double(steps)
+            let value = minGlucose + (maxGlucose - minGlucose) * Decimal(location)
+            return Gradient.Stop(
+                color: getDynamicGlucoseColor(
+                    glucoseValue: value,
+                    highGlucoseColorValue: hardCodedHigh,
+                    lowGlucoseColorValue: hardCodedLow,
+                    targetGlucose: target,
+                    glucoseColorScheme: .dynamicColor
+                ),
+                location: location
+            )
+        }
+    }
+
+    private func fraction(of value: Decimal) -> CGFloat {
+        let raw = (value - minGlucose) / (maxGlucose - minGlucose)
+        return min(max(CGFloat(truncating: raw as NSNumber), 0), 1)
+    }
+
+    private func axisValue(_ value: Decimal) -> String {
+        let display = units == .mgdL ? value : value.asMmolL
+        return "\(display)"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(LinearGradient(
+                    gradient: Gradient(stops: gradientStops),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.12), lineWidth: 1))
+                .frame(height: 26)
+                .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+
+            GeometryReader { geo in
+                ZStack(alignment: .topLeading) {
+                    ForEach(markerValues, id: \.self) { value in
+                        marker(value, at: fraction(of: value), width: geo.size.width)
+                    }
+                }
+            }
+            .frame(height: 22)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func marker(_ value: Decimal, at fraction: CGFloat, width: CGFloat) -> some View {
+        VStack(spacing: 1) {
+            Image(systemName: "arrowtriangle.up.fill")
+                .font(.system(size: 7))
+                .foregroundColor(.primary.opacity(0.55))
+            Text(axisValue(value))
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .fixedSize()
+        .position(x: min(max(width * fraction, 12), width - 12), y: 11)
     }
 }
