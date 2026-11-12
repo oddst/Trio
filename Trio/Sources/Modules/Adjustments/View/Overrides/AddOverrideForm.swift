@@ -113,7 +113,7 @@ struct AddOverrideForm: View {
                                 set: { state.overridePercentage = Double($0) }
                             ), label: Text("")
                         ) {
-                            ForEach(Array(stride(from: 40, through: 150, by: percentageStep)), id: \.self) { percent in
+                            ForEach(Array(stride(from: 20, through: 200, by: percentageStep)), id: \.self) { percent in
                                 Text(percent.formatted(.percent)).tag(percent)
                             }
                         }
