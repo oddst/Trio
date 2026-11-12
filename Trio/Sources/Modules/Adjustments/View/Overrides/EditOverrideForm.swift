@@ -175,7 +175,7 @@ struct EditOverrideForm: View {
                             label: Text("")
                         ) {
                             ForEach(
-                                Array(stride(from: 40.0, through: 150.0, by: Double(percentageStep))),
+                                Array(stride(from: 20.0, through: 200.0, by: Double(percentageStep))),
                                 id: \.self
                             ) { percent in
                                 Text((percent / 100).formatted(.wholePercent)).tag(percent)
